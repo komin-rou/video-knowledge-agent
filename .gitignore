@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Env
+.env
+
+# Data files
+data/raw_videos/
+data/audio/
+data/transcripts/
+data/cleaned/
+data/output/
+
+# Logs
+logs/
+
+# IDE
+.idea/
+.vscode/

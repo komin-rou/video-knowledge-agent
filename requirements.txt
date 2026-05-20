@@ -1,0 +1,5 @@
+moviepy
+openai-whisper
+imageio-ffmpeg
+openai
+python-dotenv
