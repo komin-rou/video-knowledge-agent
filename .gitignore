@@ -14,6 +14,7 @@ data/transcripts/
 data/cleaned/
 data/output/
 data/chunks/
+data/chunk_results/
 
 # Logs
 logs/

@@ -13,6 +13,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 CLEANED_DIR = BASE_DIR / "data" / "cleaned"
 OUTPUT_DIR = BASE_DIR / "data" / "output"
+CHUNK_RESULTS_DIR = BASE_DIR / "data" / "chunk_results"
 
 load_dotenv(BASE_DIR / ".env")
 
@@ -236,6 +237,16 @@ def call_deepseek(client: OpenAI, prompt: str) -> dict:
         return repair_json_response(client, content, str(e))
 
 def extract_chunk_knowledge(client: OpenAI, chunk_path: Path, chunk_index: int, total_chunks: int) -> dict:
+    CHUNK_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+
+    cache_path = CHUNK_RESULTS_DIR / f"{chunk_path.stem}_result.json"
+
+    if cache_path.exists():
+        print(f"已存在缓存，跳过第 {chunk_index}/{total_chunks} 个 chunk：{chunk_path.name}")
+
+        with open(cache_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
     with open(chunk_path, "r", encoding="utf-8") as f:
         chunk_text = f.read()
 
@@ -244,6 +255,9 @@ def extract_chunk_knowledge(client: OpenAI, chunk_path: Path, chunk_index: int, 
     print(f"正在提取第 {chunk_index}/{total_chunks} 个 chunk：{chunk_path.name}")
 
     result = call_deepseek(client, prompt)
+
+    with open(cache_path, "w", encoding="utf-8") as f:
+        json.dump(result, f, ensure_ascii=False, indent=2)
 
     time.sleep(0.5)
 
