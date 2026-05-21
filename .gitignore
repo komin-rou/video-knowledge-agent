@@ -13,6 +13,7 @@ data/audio/
 data/transcripts/
 data/cleaned/
 data/output/
+data/chunks/
 
 # Logs
 logs/
