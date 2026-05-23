@@ -1,5 +1,6 @@
 from pathlib import Path
 from dataclasses import dataclass
+from memory_manager import MemoryManager
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,6 +29,7 @@ class VideoKnowledgeAgentController:
 
     def __init__(self, chunk_threshold_chars: int = 3000):
         self.chunk_threshold_chars = chunk_threshold_chars
+        self.memory = MemoryManager()
 
     def find_videos(self) -> list[Path]:
         """
@@ -38,40 +40,67 @@ class VideoKnowledgeAgentController:
 
     def estimate_video_type(self, video_path: Path) -> str:
         """
-        根据文件名粗略判断视频类型
-
-        V1 先用规则判断。
-        后面可以升级成 LLM 判断。
+        根据文件名判断视频类型
         """
 
         name = video_path.stem.lower()
 
-        if "rag" in name:
-            return "rag_learning"
+        technical_keywords = [
+            "rag",
+            "agent",
+            "llm",
+            "ai",
+            "python",
+            "langchain",
+            "deepseek",
+            "gpt",
+            "prompt"
+        ]
 
-        if "agent" in name:
-            return "agent_learning"
+        recipe_keywords = [
+            "recipe",
+            "food",
+            "cook",
+            "菜",
+            "做饭",
+            "美食",
+            "炒",
+            "炖",
+            "煮"
+        ]
 
-        if "python" in name:
-            return "python_learning"
+        fitness_keywords = [
+            "fitness",
+            "gym",
+            "workout",
+            "训练",
+            "健身",
+            "卧推",
+            "深蹲",
+            "增肌"
+        ]
 
-        if "recipe" in name or "food" in name or "cook" in name:
+        if any(keyword in name for keyword in technical_keywords):
+            return "technical"
+
+        if any(keyword in name for keyword in recipe_keywords):
             return "recipe"
 
-        return "general_learning"
+        if any(keyword in name for keyword in fitness_keywords):
+            return "fitness"
+
+        return "general"
 
     def choose_prompt_type(self, video_type: str) -> str:
-        """
-        根据视频类型选择不同的 Prompt 模板
-        """
 
-        if video_type == "recipe":
-            return "recipe_prompt"
+        mapping = {
+            "technical": "technical_prompt",
+            "recipe": "recipe_prompt",
+            "fitness": "fitness_prompt",
+            "general": "general_prompt"
+        }
 
-        if video_type in ["rag_learning", "agent_learning", "python_learning"]:
-            return "technical_learning_prompt"
-
-        return "general_knowledge_prompt"
+        return mapping.get(video_type, "general_prompt")
 
     def decide_chunking(self, cleaned_text_path: Path | None) -> bool:
         """
@@ -100,6 +129,14 @@ class VideoKnowledgeAgentController:
                 reason="视频文件不存在"
             )
 
+        if self.memory.is_processed(video_path.name):
+            return AgentDecision(
+                video_path=video_path,
+                should_process=False,
+                need_chunking=False,
+                prompt_type="none",
+                reason="该视频已处理成功，Agent 自动跳过"
+            )
         video_type = self.estimate_video_type(video_path)
         prompt_type = self.choose_prompt_type(video_type)
 

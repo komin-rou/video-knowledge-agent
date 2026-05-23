@@ -7,8 +7,10 @@ from knowledge_extractor import extract_knowledge
 
 from agent_controller import VideoKnowledgeAgentController
 
+from memory_manager import MemoryManager
 
-def process_single_video(video_path: Path, need_chunking: bool):
+
+def process_single_video(video_path: Path, need_chunking: bool, prompt_type: str):
     """
     动态执行单个视频流程
     """
@@ -30,14 +32,20 @@ def process_single_video(video_path: Path, need_chunking: bool):
     else:
         print("Agent 决策：直接处理，不 Chunk")
 
-    output_path = extract_knowledge(cleaned_path)
+    output_path = extract_knowledge(
+        cleaned_path,
+        prompt_type=prompt_type
+    )
 
     print("\n处理完成")
     print(f"输出文件：{output_path}")
 
+    return output_path
+
 
 def main():
     controller = VideoKnowledgeAgentController()
+    memory = MemoryManager()
 
     decisions = controller.plan()
 
@@ -65,13 +73,31 @@ def main():
             continue
 
         try:
-            process_single_video(
+            output_path = process_single_video(
                 video_path=decision.video_path,
-                need_chunking=decision.need_chunking
+                need_chunking=decision.need_chunking,
+                prompt_type=decision.prompt_type
+            )
+
+            memory.add_record(
+                video_name=decision.video_path.name,
+                status="success",
+                chunks=0,
+                prompt_type=decision.prompt_type,
+                output_path=str(output_path),
+                note="处理成功"
             )
 
         except Exception as e:
             print(f"处理失败：{e}")
+
+            memory.add_record(
+                video_name=decision.video_path.name,
+                status="failed",
+                chunks=0,
+                prompt_type=decision.prompt_type,
+                note=str(e)
+            )
 
     print("\n" + "=" * 60)
     print("所有任务完成")

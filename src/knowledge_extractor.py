@@ -8,6 +8,13 @@ from openai import OpenAI
 
 from chunker import process_cleaned_text
 
+from prompts import (
+    TECHNICAL_PROMPT,
+    RECIPE_PROMPT,
+    FITNESS_PROMPT,
+    GENERAL_PROMPT
+)
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -21,9 +28,17 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-v4-flash")
 
 
-def build_chunk_prompt(chunk_text: str, chunk_index: int, total_chunks: int) -> str:
+def build_chunk_prompt(
+        chunk_text: str,
+        chunk_index: int,
+        total_chunks: int,
+        prompt_type: str
+):
     return f"""
-你是一个专业的 AI 学习资料整理助手。
+    {base_prompt}
+
+    下面是一个教学视频 ASR 文本的第 {chunk_index}/{total_chunks} 个片段。
+base_prompt = get_prompt_by_type(prompt_type)
 
 下面是一个教学视频 ASR 文本的第 {chunk_index}/{total_chunks} 个片段。
 文本可能有口语化、重复、识别错误和废话。
@@ -236,7 +251,13 @@ def call_deepseek(client: OpenAI, prompt: str) -> dict:
         print(f"错误信息：{e}")
         return repair_json_response(client, content, str(e))
 
-def extract_chunk_knowledge(client: OpenAI, chunk_path: Path, chunk_index: int, total_chunks: int) -> dict:
+def extract_chunk_knowledge(
+    client: OpenAI,
+    chunk_path: Path,
+    chunk_index: int,
+    total_chunks: int,
+    prompt_type: str
+):
     CHUNK_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
     cache_path = CHUNK_RESULTS_DIR / f"{chunk_path.stem}_result.json"
@@ -250,7 +271,12 @@ def extract_chunk_knowledge(client: OpenAI, chunk_path: Path, chunk_index: int, 
     with open(chunk_path, "r", encoding="utf-8") as f:
         chunk_text = f.read()
 
-    prompt = build_chunk_prompt(chunk_text, chunk_index, total_chunks)
+    prompt = build_chunk_prompt(
+        chunk_text,
+        chunk_index,
+        total_chunks,
+        prompt_type
+    )
 
     print(f"正在提取第 {chunk_index}/{total_chunks} 个 chunk：{chunk_path.name}")
 
@@ -264,15 +290,34 @@ def extract_chunk_knowledge(client: OpenAI, chunk_path: Path, chunk_index: int, 
     return result
 
 
-def merge_chunk_results(client: OpenAI, chunk_results: list[dict]) -> dict:
+def merge_chunk_results(client: OpenAI, chunk_results: list[dict], output_path: Path) -> dict:
+    """
+    合并所有 chunk 的知识结果。
+    如果最终结果已经存在，则直接读取缓存。
+    """
+
+    if output_path.exists():
+        print("已存在最终知识 JSON，跳过合并 API 调用")
+
+        with open(output_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
     print("正在合并所有 chunk 的知识结果...")
 
     prompt = build_merge_prompt(chunk_results)
 
-    return call_deepseek(client, prompt)
+    final_result = call_deepseek(client, prompt)
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(final_result, f, ensure_ascii=False, indent=2)
+
+    return final_result
 
 
-def extract_knowledge(cleaned_text_path: Path) -> Path:
+def extract_knowledge(
+    cleaned_text_path: Path,
+    prompt_type: str = "general_prompt"
+):
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
     client = get_client()
@@ -291,20 +336,35 @@ def extract_knowledge(cleaned_text_path: Path) -> Path:
             client=client,
             chunk_path=chunk_path,
             chunk_index=index,
-            total_chunks=total_chunks
+            total_chunks=total_chunks,
+            prompt_type=prompt_type
         )
         chunk_results.append(chunk_result)
 
-    final_result = merge_chunk_results(client, chunk_results)
-
     output_path = OUTPUT_DIR / f"{cleaned_text_path.stem}_knowledge.json"
 
+    final_result = merge_chunk_results(
+        client=client,
+        chunk_results=chunk_results,
+        output_path=output_path
+    )
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(final_result, f, ensure_ascii=False, indent=2)
 
     print(f"知识提取完成：{output_path}")
 
     return output_path
+
+def get_prompt_by_type(prompt_type: str) -> str:
+
+    mapping = {
+        "technical_prompt": TECHNICAL_PROMPT,
+        "recipe_prompt": RECIPE_PROMPT,
+        "fitness_prompt": FITNESS_PROMPT,
+        "general_prompt": GENERAL_PROMPT
+    }
+
+    return mapping.get(prompt_type, GENERAL_PROMPT)
 
 
 def main():
