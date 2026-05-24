@@ -14,6 +14,8 @@ from reflection_evaluator import evaluate_knowledge
 from tool_selector import ToolSelector
 from subtitle_processor import subtitle_to_transcript
 
+from status_decider import decide_status_by_quality, build_status_note
+
 
 def process_single_video(video_path: Path, need_chunking: bool, prompt_type: str):
     """
@@ -99,34 +101,53 @@ def main():
             )
 
             reflection_result = evaluate_knowledge(output_path)
+
             quality_score = reflection_result.get("quality_score", 0)
+            quality_level = reflection_result.get("quality_level", "unknown")
+            suggestion = reflection_result.get("suggestion", "")
+
+            final_status = decide_status_by_quality(quality_score)
+
+            note = build_status_note(
+                quality_score=quality_score,
+                quality_level=quality_level,
+                suggestion=suggestion
+            )
 
             memory.add_record(
                 video_name=decision.video_path.name,
-
-                quality_score=quality_score,
-
-                tool_used=tool_used,
-
-                status="success",
+                status=final_status,
                 chunks=0,
                 prompt_type=decision.prompt_type,
                 output_path=str(output_path),
-                note="处理成功"
+                quality_score=quality_score,
+                tool_used=tool_used,
+                note=note
             )
 
+
         except Exception as e:
+
             print(f"处理失败：{e}")
 
             memory.add_record(
+
                 video_name=decision.video_path.name,
+
+                status="failed",
+
+                chunks=0,
+
+                prompt_type=decision.prompt_type,
+
+                output_path="",
+
+                quality_score=0,
 
                 tool_used="unknown",
 
-                status="failed",
-                chunks=0,
-                prompt_type=decision.prompt_type,
                 note=str(e)
+
             )
 
     print("\n" + "=" * 60)
