@@ -9,6 +9,8 @@ from agent_controller import VideoKnowledgeAgentController
 
 from memory_manager import MemoryManager
 
+from reflection_evaluator import evaluate_knowledge
+
 
 def process_single_video(video_path: Path, need_chunking: bool, prompt_type: str):
     """
@@ -79,8 +81,14 @@ def main():
                 prompt_type=decision.prompt_type
             )
 
+            reflection_result = evaluate_knowledge(output_path)
+            quality_score = reflection_result.get("quality_score", 0)
+
             memory.add_record(
                 video_name=decision.video_path.name,
+
+                quality_score=quality_score,
+
                 status="success",
                 chunks=0,
                 prompt_type=decision.prompt_type,

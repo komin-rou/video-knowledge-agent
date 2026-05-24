@@ -38,6 +38,9 @@ class MemoryManager:
         video_name: str,
         status: str,
         chunks: int = 0,
+
+        quality_score: int = 0,
+
         prompt_type: str = "",
         output_path: str = "",
         note: str = ""
@@ -51,6 +54,7 @@ class MemoryManager:
             "prompt_type": prompt_type,
             "output_path": output_path,
             "note": note,
+            "quality_score": quality_score,
             "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
 
