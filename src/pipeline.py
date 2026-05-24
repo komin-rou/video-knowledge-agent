@@ -11,26 +11,44 @@ from memory_manager import MemoryManager
 
 from reflection_evaluator import evaluate_knowledge
 
+from tool_selector import ToolSelector
+from subtitle_processor import subtitle_to_transcript
+
 
 def process_single_video(video_path: Path, need_chunking: bool, prompt_type: str):
     """
-    动态执行单个视频流程
+    动态执行单个视频流程：
+    Agent 先选择文本获取工具：
+    - 有字幕：字幕转 transcript
+    - 无字幕：Whisper ASR
     """
 
-    print("\n[1/4] 提取音频")
-    audio_path = extract_audio_from_video(video_path)
+    tool_selector = ToolSelector()
 
-    print("\n[2/4] Whisper ASR")
-    transcript_path = transcribe_audio(audio_path)
+    print("\n[1/4] Tool Selection：选择文本获取工具")
+    tool_decision = tool_selector.choose_text_extraction_tool(video_path)
 
-    print("\n[3/4] 文本轻清洗")
+    print(f"Agent 工具选择：{tool_decision['tool']}")
+    print(f"选择理由：{tool_decision['reason']}")
+
+    if tool_decision["tool"] == "subtitle":
+        print("\n[2/4] 使用字幕生成 Transcript")
+        transcript_path = subtitle_to_transcript(tool_decision["subtitle_path"])
+
+    else:
+        print("\n[2/4] 提取音频")
+        audio_path = extract_audio_from_video(video_path)
+
+        print("\n[3/4] Whisper ASR")
+        transcript_path = transcribe_audio(audio_path)
+
+    print("\n[4/4] 文本轻清洗")
     cleaned_path = process_transcript(transcript_path)
 
-    print("\n[4/4] 知识提取")
+    print("\n[5/5] 知识提取")
 
     if need_chunking:
         print("Agent 决策：使用 Chunking 模式")
-
     else:
         print("Agent 决策：直接处理，不 Chunk")
 
@@ -43,7 +61,6 @@ def process_single_video(video_path: Path, need_chunking: bool, prompt_type: str
     print(f"输出文件：{output_path}")
 
     return output_path
-
 
 def main():
     controller = VideoKnowledgeAgentController()
