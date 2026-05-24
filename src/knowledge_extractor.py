@@ -225,31 +225,48 @@ def repair_json_response(client: OpenAI, broken_content: str, error_message: str
     return json.loads(repaired_content)
 
 
-def call_deepseek(client: OpenAI, prompt: str) -> dict:
-    response = client.chat.completions.create(
-        model=DEEPSEEK_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": "你是一个严谨的知识结构化助手，只输出合法 JSON。"
-            },
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
-        response_format={"type": "json_object"},
-        temperature=0.2
-    )
+def call_deepseek(client: OpenAI, prompt: str, max_retries: int = 3) -> dict:
+    last_error = None
 
-    content = response.choices[0].message.content
+    for attempt in range(1, max_retries + 1):
+        try:
+            print(f"DeepSeek 调用尝试：{attempt}/{max_retries}")
 
-    try:
-        return parse_json_response(content)
-    except json.JSONDecodeError as e:
-        print("JSON 解析失败，开始修复...")
-        print(f"错误信息：{e}")
-        return repair_json_response(client, content, str(e))
+            response = client.chat.completions.create(
+                model=DEEPSEEK_MODEL,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "你是一个严谨的知识结构化助手，只输出合法 JSON。"
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.2
+            )
+
+            content = response.choices[0].message.content
+
+            try:
+                return parse_json_response(content)
+            except json.JSONDecodeError as e:
+                print("JSON 解析失败，开始修复...")
+                print(f"错误信息：{e}")
+                return repair_json_response(client, content, str(e))
+
+        except Exception as e:
+            last_error = e
+            print(f"DeepSeek 调用失败：{e}")
+
+            if attempt < max_retries:
+                wait_seconds = attempt * 2
+                print(f"{wait_seconds} 秒后重试...")
+                time.sleep(wait_seconds)
+
+    raise RuntimeError(f"DeepSeek 多次调用失败：{last_error}")
 
 def extract_chunk_knowledge(
     client: OpenAI,
