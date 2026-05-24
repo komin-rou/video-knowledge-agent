@@ -16,6 +16,7 @@ data/output/
 data/chunks/
 data/chunk_results/
 data/memory/
+data/review/
 
 # Logs
 logs/

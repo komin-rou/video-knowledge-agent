@@ -16,6 +16,7 @@ from subtitle_processor import subtitle_to_transcript
 
 from status_decider import decide_status_by_quality, build_status_note
 
+from review_manager import ReviewManager
 
 def process_single_video(video_path: Path, need_chunking: bool, prompt_type: str):
     """
@@ -70,6 +71,8 @@ def main():
 
     decisions = controller.plan()
 
+    review_manager = ReviewManager()
+
     if not decisions:
         print("没有找到待处理视频")
         return
@@ -113,6 +116,15 @@ def main():
                 quality_level=quality_level,
                 suggestion=suggestion
             )
+
+            if final_status in ["low_quality", "needs_review"]:
+                review_manager.add_review_item(
+                    video_name=decision.video_path.name,
+                    quality_score=quality_score,
+                    quality_level=quality_level,
+                    suggestion=suggestion,
+                    output_path=str(output_path)
+                )
 
             memory.add_record(
                 video_name=decision.video_path.name,
