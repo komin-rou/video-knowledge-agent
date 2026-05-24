@@ -41,6 +41,8 @@ class MemoryManager:
 
         quality_score: int = 0,
 
+        tool_used: str = "",
+
         prompt_type: str = "",
         output_path: str = "",
         note: str = ""
@@ -55,6 +57,7 @@ class MemoryManager:
             "output_path": output_path,
             "note": note,
             "quality_score": quality_score,
+            "tool_used": tool_used,
             "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         }
 

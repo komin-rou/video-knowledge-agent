@@ -60,7 +60,7 @@ def process_single_video(video_path: Path, need_chunking: bool, prompt_type: str
     print("\n处理完成")
     print(f"输出文件：{output_path}")
 
-    return output_path
+    return output_path, tool_decision["tool"]
 
 def main():
     controller = VideoKnowledgeAgentController()
@@ -92,7 +92,7 @@ def main():
             continue
 
         try:
-            output_path = process_single_video(
+            output_path, tool_used = process_single_video(
                 video_path=decision.video_path,
                 need_chunking=decision.need_chunking,
                 prompt_type=decision.prompt_type
@@ -106,6 +106,8 @@ def main():
 
                 quality_score=quality_score,
 
+                tool_used=tool_used,
+
                 status="success",
                 chunks=0,
                 prompt_type=decision.prompt_type,
@@ -118,6 +120,9 @@ def main():
 
             memory.add_record(
                 video_name=decision.video_path.name,
+
+                tool_used="unknown",
+
                 status="failed",
                 chunks=0,
                 prompt_type=decision.prompt_type,
