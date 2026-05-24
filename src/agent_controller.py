@@ -197,6 +197,5 @@ def main():
         print(f"Prompt 类型：{decision.prompt_type}")
         print(f"决策理由：{decision.reason}")
 
-
 if __name__ == "__main__":
     main()
